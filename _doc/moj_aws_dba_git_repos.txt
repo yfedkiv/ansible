@@ -1,0 +1,20 @@
+-- Checked out
+delius-manual-deployments
+hmpps-env-configs
+hmpps-oracle-database
+hmpps-oracle-database-patches
+hmpps-delius-core-oracledb-installer
+
+-- Available to download
+hmpps-delius-core-packer
+hmpps-mis-terraform-repo
+hmpps-delius-core-terraform
+hmpps-delius-oracledb-ha
+hmpps-oracle-database-autotasks
+hmpps-ansible-roles
+hmpps-delius-pipelines
+hmpps-oracle-database-parameters
+hmpps-bootstrap
+hmpps-engineering-platform-terraform
+hmpps-delius-core-oracledb-bootstrap
+hmpps-engineering-tools

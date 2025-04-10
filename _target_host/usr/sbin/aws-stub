@@ -1,0 +1,95 @@
+#!/bin/bash
+#
+#
+#  Helper Script for running Ansible.
+#  Simulate AWS activity where AWS CLI is not in use.
+#  Note that this must be installed in /sbin so
+#  that it appears to Ansible ahead of /usr/bin/aws
+#  in the default PATH.
+#
+#
+
+# Define local passwords
+RMAN_PASSWORD=c91namr
+
+# Note that the system password is used for the Alfresco wallet and therefore must
+# meeting password criteria: Passwords must have a minimum length of eight characters and contain alphabetic characters combined with numbers or special characters. 
+declare -A SYSTEM_PASSWORDS
+SYSTEM_PASSWORDS[sys]=NDAmanager1
+SYSTEM_PASSWORDS[system]=NDAmanager1
+SYSTEM_PASSWORDS[dbsnmp]=NDelius1
+
+
+declare -A DELIUS_PASSWORDS
+DELIUS_PASSWORDS[delius_app_schema]=NDelius1
+DELIUS_PASSWORDS[delius_pool]=NDelius1
+DELIUS_PASSWORDS[delius_analytics_platform]=NDelius1
+DELIUS_PASSWORDS[gdpr_pool]=NDelius1
+DELIUS_PASSWORDS[delius_api_pool]=NDelius1
+DELIUS_PASSWORDS[delius_audit_pool]=NDelius1
+DELIUS_PASSWORDS[mms_pool]=NDelius1
+
+set -x
+
+if [[ "$1" == "s3" && "$2" == "cp" && "$3" =~ "s3://" ]];
+then
+   REQUESTED_FILE=$(echo $3 | awk -F/ '{print $NF}')
+   if [[ -f "$4/${REQUESTED_FILE}" ]];
+   then
+      echo "${REQUESTED_FILE} already downloaded to $4."
+      exit 0
+   else
+      echo "${REQUESTED_FILE} is not available locally."
+      exit 2
+   fi
+fi
+
+if [[ "$1" == "s3" && "$2" == "ls" && "$3" == "s3://NONE" ]];
+then
+   echo "Using local files."
+   exit 0
+fi
+
+if [[ "$1" == "ssm" && "$2" == "get-parameters" ]];
+then
+   if [[ "$7" =~ "rman_password" ]];
+   then
+      echo -e "{\n\"Parameters\": [\n{\n\"Value\": \"${RMAN_PASSWORD}\"\n}\n]\n}\n" 
+      exit 0
+   elif [[ "$7" =~ "oradb_" ]];
+   then
+      USERNAME=$(echo $7 | awk -F/ '{print $NF}' | awk -Foradb_ '{print $2}' | awk -F_password '{print $1}')
+      SYSTEM_PASSWORD=${SYSTEM_PASSWORDS[$USERNAME]}
+      if [[ -z ${SYSTEM_PASSWORD} ]];
+      then
+         echo -e "{\n\"Parameters\": []\n}\n" 
+         exit 0
+      fi
+      echo -e "{\n\"Parameters\": [\n{\n\"Value\": \"${SYSTEM_PASSWORD}\"\n}\n]\n}\n" 
+      exit 0
+   else
+      USERNAME=$(echo $7 | awk -F/ '{print $NF}' | awk -F_password '{print $1}')
+      DELIUS_PASSWORD=${DELIUS_PASSWORDS[$USERNAME]}
+      if [[ -z ${DELIUS_PASSWORD} ]];
+      then
+         echo -e "{\n\"Parameters\": []\n}\n" 
+         exit 0
+      fi
+      echo -e "{\n\"Parameters\": [\n{\n\"Value\": \"${DELIUS_PASSWORD}\"\n}\n]\n}\n" 
+      exit 0
+   fi
+   echo "Password not set."
+   exit 1
+fi
+ 
+if [[ "$1" == "ssm" && "$2" == "get-parameter" && "$3" == "--name" ]];
+then
+   USERNAME=$(echo $4 | awk -F/ '{print $NF}' | awk -Foradb_ '{print $2}' | awk -F_password '{print $1}')
+   SYSTEM_PASSWORD=${SYSTEM_PASSWORDS[$USERNAME]}
+   [[ -z ${SYSTEM_PASSWORD} ]] && exit 0;
+   echo ${SYSTEM_PASSWORD}
+   exit 0 
+fi
+
+echo "Command not found."
+exit 1
